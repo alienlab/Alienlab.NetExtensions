@@ -5,8 +5,6 @@ namespace Alienlab.NetExtensions
 
   public sealed class DownloadOptions
   {
-    public event Action<long> OnProgressChanged;
-
     private const long Kb = 1024;
 
     private const long Mb = 1024 * Kb;
