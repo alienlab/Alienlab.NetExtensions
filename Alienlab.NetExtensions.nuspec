@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Alienlab.NetExtensions</id>
+        <version>1.0.1</version>
+        <title>Alienlab.NetExtensions</title>
+        <authors>Alen Pelin</authors>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>System.Net extensions for multi-threaded downloading and working with ASP.NET web forms.</description>
+    </metadata>
+    <files>
+        <file src="bin\Release\Alienlab.NetExtensions.dll" target="lib\Alienlab.NetExtensions.dll" />
+        <file src="bin\Release\Alienlab.NetExtensions.pdb" target="lib\Alienlab.NetExtensions.pdb" />
+    </files>
+</package>
