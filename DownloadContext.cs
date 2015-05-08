@@ -6,9 +6,13 @@
   using System.Linq;
   using System.Net;
   using System.Threading;
+  using System.Threading.Tasks;
 
   public class DownloadContext
   {
+    // used in Download
+    const int pollingTimeout = 200;
+
     public readonly Uri Uri;
 
     [NotNull]
@@ -18,32 +22,30 @@
 
     public readonly long NetworkReadBufferSize;
     
-    private readonly CancellationToken cancellationToken;
-    
     public readonly string Cookies;
-
-    [NotNull]
-    private readonly IEnumerable<Block> Blocks;
 
     public long BlocksCount { get; }
 
-    private readonly Size percentSize;
+    protected readonly CancellationToken cancellationToken;
+
+    [NotNull]
+    protected readonly IEnumerable<Block> Blocks;
+
+    protected readonly Size percentSize;
+
+    protected readonly TimeSpan RequestTimeout;
+
+    [NotNull]
+    protected readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+    [NotNull]
+    protected readonly object syncBlock = new object();
 
     private long totalBytesDownloaded;
 
-    [NotNull]
-    private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
     private int blocksCompleted;
 
-    private readonly TimeSpan RequestTimeout;
-
-    [NotNull]
-    private readonly object syncBlock = new object();
-
     private bool downloadCompleted;
-
-    public int BlocksCompleted => this.blocksCompleted;
 
     public event Action<Block, long> OnProgressChanged;
 
@@ -100,19 +102,46 @@
       this.percentSize = Size.FromBytes(fileSize.Bytes / 100);
     }
 
-    public void Download()
+    public int BlocksCompleted => this.blocksCompleted;
+
+    public virtual void DownloadAsync()
     {
       Assert.IsNotNull(this.Uri, "this.Uri");
       Assert.IsNotNull(this.FilePath, "this.FilePath");
 
       foreach (var block in this.Blocks)
       {
-        var thread = new Thread(this.DownloadBlock);
-        thread.Start(block);
+        this.StartDownloadBlock(block);
       }
     }
 
-    private void DownloadBlock(object param)
+    public virtual void Download()
+    {
+      Assert.IsNotNull(this.Uri, "this.Uri");
+      Assert.IsNotNull(this.FilePath, "this.FilePath");
+
+      var threads = new List<Thread>();
+      foreach (var block in this.Blocks)
+      {
+        Thread thread = this.StartDownloadBlock(block);
+        threads.Add(thread);
+      }
+
+      while (threads.Any(x => x.IsAlive))
+      {
+        Thread.Sleep(pollingTimeout);
+      }
+    }
+
+    protected virtual Thread StartDownloadBlock(Block block)
+    {
+      var thread = new Thread(this.DownloadBlock);
+      thread.Start(block);
+
+      return thread;
+    }
+
+    protected virtual void DownloadBlock(object param)
     {
       var block = (Block)param;
       Assert.IsNotNull(block, "block");
@@ -196,7 +225,7 @@
       }
     }
 
-    private void UpdateProgressCounter(Block block, int bytesDownloaded)
+    protected virtual void UpdateProgressCounter(Block block, int bytesDownloaded)
     {
       Interlocked.Add(ref this.totalBytesDownloaded, bytesDownloaded);
       var percent = this.totalBytesDownloaded / this.percentSize;
