@@ -176,7 +176,7 @@
           Assert.IsNotNull(response, "The requested URI doesn't respond. Uri: " + uri);
 
           HttpStatusCode statusCode = response.StatusCode;
-          Assert.IsTrue(statusCode == HttpStatusCode.PartialContent, string.Format("The server response code is {0} instead of 206, which normally indicates that the server does not support range retrieval requests", (object) statusCode));
+          Assert.IsTrue(this.BlocksCount == 1 || statusCode == HttpStatusCode.PartialContent, string.Format("The server response code is {0} instead of 206, which normally indicates that the server does not support range retrieval requests", (object) statusCode));
           
           using (var responseStream = response.GetResponseStream())
           {
