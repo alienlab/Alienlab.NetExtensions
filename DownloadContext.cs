@@ -21,7 +21,7 @@
     public readonly Size FileSize;
 
     public readonly long NetworkReadBufferSize;
-    
+
     public readonly string Cookies;
 
     public long BlocksCount { get; }
@@ -47,7 +47,7 @@
 
     private bool downloadCompleted;
 
-    public event Action<Block, long> OnProgressChanged;
+    public event Action<Block, long, int> OnProgressChanged;
 
     public event Action<Exception> OnErrorOccurred;
 
@@ -158,7 +158,8 @@
 
         var requestTimeout = this.RequestTimeout;
         request.Timeout = (int)requestTimeout.TotalMilliseconds;
-
+        
+        var path = this.FilePath;
         var cookies = this.Cookies;
         if (cookies != null)
         {
@@ -174,11 +175,14 @@
         {
           Assert.IsNotNull(response, "The requested URI doesn't respond. Uri: " + uri);
 
+          HttpStatusCode statusCode = response.StatusCode;
+          Assert.IsTrue(statusCode == HttpStatusCode.PartialContent, string.Format("The server response code is {0} instead of 206, which normally indicates that the server does not support range retrieval requests", (object) statusCode));
+          
           using (var responseStream = response.GetResponseStream())
           {
             Assert.IsNotNull(responseStream, "The requested URI doesn't respond with a stream. Uri: " + uri);
 
-            using (var fileStream = File.Open(this.FilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+            using (var fileStream = File.Open(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
             {
               fileStream.Position = offset;
               var buffer = new byte[this.NetworkReadBufferSize];
@@ -228,11 +232,11 @@
     protected virtual void UpdateProgressCounter(Block block, int bytesDownloaded)
     {
       Interlocked.Add(ref this.totalBytesDownloaded, bytesDownloaded);
-      var percent = this.totalBytesDownloaded / this.percentSize;
+      var percent = (int) (this.totalBytesDownloaded / this.percentSize);
       if (percent > this.TotalPercentage)
       {
         this.TotalPercentage = percent;
-        this.OnProgressChanged?.Invoke(block, percent);
+        this.OnProgressChanged?.Invoke(block, (long)bytesDownloaded, percent);
       }
 
       if (this.totalBytesDownloaded == this.FileSize)
